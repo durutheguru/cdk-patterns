@@ -9,13 +9,13 @@
 // import org.junit.jupiter.api.Test;
 
 // example test. To run these tests, uncomment this file, along with the
-// example resource in java/src/main/java/com/myorg/CdkPatternsStack.java
-// public class CdkPatternsTest {
+// example resource in java/src/main/java/com/myorg/CodePipelineStack.java
+// public class CodePipelineTest {
 
 //     @Test
 //     public void testStack() throws IOException {
 //         App app = new App();
-//         CdkPatternsStack stack = new CdkPatternsStack(app, "test");
+//         CodePipelineStack stack = new CodePipelineStack(app, "test");
 
 //         Template template = Template.fromStack(stack);
 
