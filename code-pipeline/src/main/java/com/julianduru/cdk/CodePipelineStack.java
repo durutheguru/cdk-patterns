@@ -42,7 +42,7 @@ public class CodePipelineStack extends Stack {
 
         pipeline.addStage(
             new TestStage(
-                this, "testStage",
+                this, "testStageId",
                 StageProps.builder()
                     .env(
                         Environment.builder()
