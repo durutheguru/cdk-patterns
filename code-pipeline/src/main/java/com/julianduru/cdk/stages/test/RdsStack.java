@@ -35,7 +35,7 @@ public class RdsStack extends Stack {
             .vpc(vpc)
             .vpcSubnets(
                 SubnetSelection.builder()
-                    .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
+                    .subnetType(SubnetType.PRIVATE_ISOLATED)
                     .build()
             )
             .build();
