@@ -24,6 +24,7 @@ public class Ec2Stack extends Stack {
         Instance instance = Instance.Builder.create(this, "Test_Ec2_Instance")
             .vpc(vpc)
             .instanceType(InstanceType.of(InstanceClass.T2, InstanceSize.MICRO))
+            .machineImage(MachineImage.latestAmazonLinux2023())
             .securityGroup(securityGroup)
             .build();
 
