@@ -32,7 +32,7 @@ public class CodePipelineStack extends Stack {
                         Arrays.asList(
                             "npm install -g aws-cdk",
                             "cd code-pipeline",
-                            "cdk deploy --all --verbose"
+                            "cdk deploy --all --verbose --require-approval never"
                         )
                     )
                     .primaryOutputDirectory("code-pipeline/cdk.out")
