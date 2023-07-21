@@ -19,6 +19,7 @@ public class Ec2Stack extends Stack {
         SecurityGroup securityGroup = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
             .vpc(vpc)
             .build();
+        securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22), "Allow SSH access");
 
         // Create EC2 Instance
         Instance instance = Instance.Builder.create(this, "Test_Ec2_Instance")
