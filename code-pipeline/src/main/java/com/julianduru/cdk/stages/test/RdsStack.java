@@ -61,7 +61,7 @@ public class RdsStack extends Stack {
             .vpc(vpc)
             .vpcSubnets(
                 SubnetSelection.builder()
-                    .subnetType(SubnetType.PRIVATE_ISOLATED)
+                    .subnetType(SubnetType.PUBLIC)
                     .build()
             )
             .securityGroups(Collections.singletonList(rdsSecurityGroup))
