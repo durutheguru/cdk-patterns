@@ -40,7 +40,7 @@ public class RdsStack extends Stack {
             .engine(
                 DatabaseInstanceEngine.mysql(
                     MySqlInstanceEngineProps.builder()
-                        .version(MysqlEngineVersion.VER_8_0_23)
+                        .version(MysqlEngineVersion.VER_8_0)
                         .build()
                 )
             )
@@ -62,6 +62,7 @@ public class RdsStack extends Stack {
 
 
 }
+
 
 
 
