@@ -25,7 +25,7 @@ public class TestStage extends Stage {
 
         VpcStack vpcStack = new VpcStack(this, "vpcStackId");
         Ec2Stack ec2Stack = new Ec2Stack(this, "ec2StackId", vpcStack.getVpc());
-        RdsStack rdsStack = new RdsStack(this, "rdsStackId", vpcStack.getVpc());
+        RdsStack rdsStack = new RdsStack(this, "rdsStackId", vpcStack.getVpc(), ec2Stack.getSecurityGroup());
 
     }
 

@@ -11,12 +11,14 @@ import software.constructs.Construct;
 
 public class Ec2Stack extends Stack {
 
+    private SecurityGroup securityGroup;
+
 
     public Ec2Stack(final Construct scope, final String id, final Vpc vpc) {
         super(scope, id);
 
         // Create Security Group
-        SecurityGroup securityGroup = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
+        securityGroup = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
             .vpc(vpc)
             .build();
         securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22), "Allow SSH access");
@@ -40,6 +42,9 @@ public class Ec2Stack extends Stack {
             .build();
     }
 
+    public SecurityGroup getSecurityGroup() {
+        return securityGroup;
+    }
 
 }
 
