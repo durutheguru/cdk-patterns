@@ -23,6 +23,11 @@ public class Ec2Stack extends Stack {
         // Create EC2 Instance
         Instance instance = Instance.Builder.create(this, "Test_Ec2_Instance")
             .vpc(vpc)
+            .vpcSubnets(
+                SubnetSelection.builder()
+                    .subnetType(SubnetType.PUBLIC)
+                    .build()
+            )
             .instanceType(InstanceType.of(InstanceClass.T2, InstanceSize.MICRO))
             .machineImage(MachineImage.latestAmazonLinux2023())
             .securityGroup(securityGroup)
