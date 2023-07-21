@@ -44,7 +44,8 @@ public class RdsStack extends Stack {
         SecurityGroup rdsSecurityGroup = SecurityGroup.Builder.create(this, "TestRDSSecurityGroup")
             .vpc(vpc)
             .build();
-        rdsSecurityGroup.addIngressRule(ec2SecurityGroup, Port.tcp(3306), "Allow SSH access");
+//        rdsSecurityGroup.addIngressRule(ec2SecurityGroup, Port.tcp(3306), "Allow EC2 access");
+        rdsSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), "Allow Public access");
 
 
         // Create RDS Database Instance
