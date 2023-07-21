@@ -44,7 +44,7 @@ public class RdsStack extends Stack {
                         .build()
                 )
             )
-            .instanceIdentifier("my_rds_database")
+            .instanceIdentifier("my-rds-database")
             .credentials(Credentials.fromSecret(secret))
             .vpc(vpc)
             .vpcSubnets(
