@@ -24,7 +24,7 @@ public class RdsStack extends Stack {
         super(scope, id);
 
         Map<String, String> secretsMap = new HashMap<>();
-        secretsMap.put("username", "postgres");
+        secretsMap.put("username", "duru");
 
 
         // Create RDS Database Secret
