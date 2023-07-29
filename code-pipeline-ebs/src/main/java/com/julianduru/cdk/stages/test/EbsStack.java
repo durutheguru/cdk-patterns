@@ -21,22 +21,25 @@ public class EbsStack extends Stack {
     public EbsStack(final Construct scope, final String id) {
         super(scope, id);
 
+
+        Role serviceRole = Role.Builder.create(this, "EBSServiceRole")
+            .assumedBy(new ServicePrincipal("elasticbeanstalk.amazonaws.com"))
+            .managedPolicies(
+                Arrays.asList(
+                    ManagedPolicy.fromAwsManagedPolicyName("AWSElasticBeanstalkFullAccess")
+                )
+            )
+            .build();
+
         String appName = "TestEBSApplication";
 
         CfnApplication application = CfnApplication.Builder.create(this, "TestEBSApplication")
             .applicationName(appName)
             .resourceLifecycleConfig(
                 CfnApplication.ApplicationResourceLifecycleConfigProperty.builder()
-//                .serviceRole("serviceRole")
+                    .serviceRole(serviceRole.getRoleArn())
                     .versionLifecycleConfig(
                         CfnApplication.ApplicationVersionLifecycleConfigProperty.builder()
-//                    .maxAgeRule(
-//                        CfnApplication.MaxAgeRuleProperty.builder()
-//                        .deleteSourceFromS3(true)
-//                        .maxAgeInDays(2)
-//                        .enabled(true)
-//                        .build()
-//                    )
                             .maxCountRule(
                                 CfnApplication.MaxCountRuleProperty.builder()
                                     .deleteSourceFromS3(true)
