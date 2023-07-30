@@ -35,49 +35,9 @@ public class CodePipelineStack extends Stack {
         String githubBranch = "main";
 
 
-//        software.amazon.awscdk.services.codebuild.CfnProject
-//
-//        Project buildProject = Project.Builder.create(this, "EBS-Project")
-//            .source(
-//                Source.gitHub(
-//                    GitHubSourceProps.builder()
-//                        .owner(githubOwner)
-//                        .repo(githubRepo)
-//                        .branchOrRef(githubBranch)
-//                        .reportBuildStatus(true)
-//                        .webhook(true)
-//                        .build()
-//                )
-//            )
-//            .buildSpec(
-//                BuildSpec.fromSourceFilename("buildspec.yml")
-//            )
-//            .environment(
-//                BuildEnvironment.builder().buildImage(LinuxBuildImage.STANDARD_5_0).build()
-//            )
-//            .build();
-
-
-//        CfnProject cfnProject = CfnProject.Builder.create(this, "EBS-Project")
-//            .source(
-//                CfnProject.SourceProperty.builder()
-//                    .type("GITHUB")
-//                    .location("https://github.com/durutheguru/cdk-patterns")
-//                    .auth(
-//                        CfnProject.SourceAuthProperty.builder()
-//                            .type("OAUTH")
-//                            .resource("github-token")
-//                            .build()
-//                    )
-//                    .build()
-//            )
-//            .build();
-
         Project buildProject = PipelineProject.Builder.create(this, "EBS-CodePipelineProject")
             .buildSpec(BuildSpec.fromSourceFilename("buildspec.yml"))
             .build();
-
-
 
         Pipeline pipeline = new Pipeline(this, "EBS-CodePipeline", PipelineProps.builder()
             .stages(
