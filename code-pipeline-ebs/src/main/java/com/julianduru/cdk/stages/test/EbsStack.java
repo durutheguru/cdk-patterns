@@ -38,15 +38,9 @@ public class EbsStack extends Stack {
     public EbsStack(@Nullable Construct scope, @Nullable String id, @Nullable StackProps props) {
         super(scope, id, props);
 
-        String appName = "TestEBSApplication";
+        String appName = "test-ebs-application";
 
         application = createApplication(appName);
-
-
-        // Define your S3 bucket
-        Bucket bucket = new Bucket(this, appName + "EBS-Resource-Bucket", BucketProps.builder()
-            .bucketName(appName + "Bucket")
-            .build());
 
 
         CfnInstanceProfile instanceProfile = createEc2InstanceProfile(appName);
@@ -66,15 +60,15 @@ public class EbsStack extends Stack {
         );
 
 
-        CfnApplicationVersion applicationVersion = CfnApplicationVersion.Builder.create(this, "TestEBSApplicationVersion")
-            .applicationName(application.getApplicationName())
-            .sourceBundle(
-                CfnApplicationVersion.SourceBundleProperty.builder()
-                    .s3Bucket("julianduru-cdk")
-                    .s3Key("test-eb-app.zip")
-                    .build()
-            )
-            .build();
+//        CfnApplicationVersion applicationVersion = CfnApplicationVersion.Builder.create(this, "TestEBSApplicationVersion")
+//            .applicationName(application.getApplicationName())
+//            .sourceBundle(
+//                CfnApplicationVersion.SourceBundleProperty.builder()
+//                    .s3Bucket("julianduru-cdk")
+//                    .s3Key("test-eb-app.zip")
+//                    .build()
+//            )
+//            .build();
 
 
         environment = CfnEnvironment.Builder.create(this, "TestEBSEnvironment")

@@ -12,6 +12,7 @@ import software.amazon.awscdk.services.codepipeline.StageProps;
 import software.amazon.awscdk.services.codepipeline.actions.CodeBuildAction;
 import software.amazon.awscdk.services.codepipeline.actions.ElasticBeanstalkDeployAction;
 import software.amazon.awscdk.services.codepipeline.actions.GitHubSourceAction;
+import software.amazon.awscdk.services.codestar.CfnGitHubRepository;
 import software.constructs.Construct;
 
 import java.util.Arrays;
@@ -28,47 +29,15 @@ public class CodePipelineStack extends Stack {
     public CodePipelineStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-//        CodePipeline pipeline = CodePipeline.Builder.create(this, "pipeline")
-//            .pipelineName("Pipeline")
-//            .synth(
-//                ShellStep.Builder.create("Synth")
-//                    .input(CodePipelineSource.gitHub("durutheguru/cdk-patterns", "main"))
-//                    .commands(
-//                        Arrays.asList(
-//                            "npm install -g aws-cdk",
-//                            "cd code-pipeline-ebs",
-//                            "cdk deploy --all --verbose --require-approval never"
-//                        )
-//                    )
-//                    .primaryOutputDirectory("code-pipeline-ebs/cdk.out")
-//                    .build()
-//            )
-//            .build();
-
-
-//        pipeline.addStage(
-//            new TestStage(
-//                this, "testStageId",
-//                StageProps.builder()
-//                    .env(
-//                        Environment.builder()
-//                            .account("058486276453")
-//                            .region("us-east-1")
-//                            .build()
-//                    )
-//                    .build()
-//            )
-//        );
-
-
         // GitHub source repository information
         String githubOwner = "durutheguru";
         String githubRepo = "cdk-patterns";
         String githubBranch = "main";
 
 
-        // Define the CodeBuild project
-//        Project buildProject = new Project(this, "MyProject", ProjectProps.builder()
+//        software.amazon.awscdk.services.codebuild.CfnProject
+//
+//        Project buildProject = Project.Builder.create(this, "EBS-Project")
 //            .source(
 //                Source.gitHub(
 //                    GitHubSourceProps.builder()
@@ -80,29 +49,32 @@ public class CodePipelineStack extends Stack {
 //                        .build()
 //                )
 //            )
+//            .buildSpec(
+//                BuildSpec.fromSourceFilename("buildspec.yml")
+//            )
 //            .environment(
 //                BuildEnvironment.builder().buildImage(LinuxBuildImage.STANDARD_5_0).build()
 //            )
-//            .build());
+//            .build();
 
-        Project buildProject = Project.Builder.create(this, "EBS-Project")
-            .source(
-                Source.gitHub(
-                    GitHubSourceProps.builder()
-                        .owner(githubOwner)
-                        .repo(githubRepo)
-                        .branchOrRef(githubBranch)
-                        .reportBuildStatus(true)
-                        .webhook(true)
-                        .build()
-                )
-            )
-            .buildSpec(
-                BuildSpec.fromSourceFilename("buildspec.yml")
-            )
-            .environment(
-                BuildEnvironment.builder().buildImage(LinuxBuildImage.STANDARD_5_0).build()
-            )
+
+//        CfnProject cfnProject = CfnProject.Builder.create(this, "EBS-Project")
+//            .source(
+//                CfnProject.SourceProperty.builder()
+//                    .type("GITHUB")
+//                    .location("https://github.com/durutheguru/cdk-patterns")
+//                    .auth(
+//                        CfnProject.SourceAuthProperty.builder()
+//                            .type("OAUTH")
+//                            .resource("github-token")
+//                            .build()
+//                    )
+//                    .build()
+//            )
+//            .build();
+
+        Project buildProject = PipelineProject.Builder.create(this, "EBS-CodePipelineProject")
+            .buildSpec(BuildSpec.fromSourceFilename("buildspec.yml"))
             .build();
 
 
@@ -134,11 +106,7 @@ public class CodePipelineStack extends Stack {
                                     .actionName("CodeBuild")
                                     .project(buildProject)
                                     .input(Artifact.artifact("EBS-SourceArtifact"))
-                                    .outputs(
-                                        Collections.singletonList(
-                                            Artifact.artifact("EBS-BuildArtifact")
-                                        )
-                                    )
+                                    .outputs(Collections.singletonList(Artifact.artifact("EBS-BuildArtifact")))
                                     .build()
                             )
                         )
@@ -150,7 +118,8 @@ public class CodePipelineStack extends Stack {
                         .build()
                 )
             )
-            .build());
+            .build()
+        );
 
     }
 
