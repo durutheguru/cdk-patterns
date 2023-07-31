@@ -36,6 +36,7 @@ public class CodePipelineStack extends Stack {
 
 
         Project buildProject = PipelineProject.Builder.create(this, "EBS-CodePipelineProject")
+            .environment(BuildEnvironment.builder().buildImage(LinuxBuildImage.STANDARD_7_0).build())
             .buildSpec(BuildSpec.fromSourceFilename("buildspec.yml"))
             .build();
 
