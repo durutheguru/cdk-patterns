@@ -120,6 +120,7 @@ public class EbsStack extends Stack {
             .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
             .build();
         ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"));
+        ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceConnect"));
 
         return CfnInstanceProfile.Builder.create(this, appName + "-InstanceProfile")
             .roles(Collections.singletonList(ec2Role.getRoleName()))
