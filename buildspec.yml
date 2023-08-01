@@ -15,9 +15,9 @@ phases:
       - echo Building the Java Maven application...
       - cd service
       - mvn clean package -DskipTests
-      - zip -r ../service.zip *
 
 
 artifacts:
+  base-directory: service
   files:
-    - service.zip
+    - '**/*'
