@@ -12,7 +12,6 @@ import software.amazon.awscdk.services.codepipeline.StageProps;
 import software.amazon.awscdk.services.codepipeline.actions.CodeBuildAction;
 import software.amazon.awscdk.services.codepipeline.actions.ElasticBeanstalkDeployAction;
 import software.amazon.awscdk.services.codepipeline.actions.GitHubSourceAction;
-import software.amazon.awscdk.services.codestar.CfnGitHubRepository;
 import software.constructs.Construct;
 
 import java.util.Arrays;
