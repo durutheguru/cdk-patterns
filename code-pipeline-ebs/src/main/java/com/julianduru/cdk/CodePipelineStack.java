@@ -13,6 +13,7 @@ import software.amazon.awscdk.services.codepipeline.StageProps;
 import software.amazon.awscdk.services.codepipeline.actions.CodeBuildAction;
 import software.amazon.awscdk.services.codepipeline.actions.ElasticBeanstalkDeployAction;
 import software.amazon.awscdk.services.codepipeline.actions.GitHubSourceAction;
+import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.BucketProps;
 import software.constructs.Construct;
@@ -35,6 +36,34 @@ public class CodePipelineStack extends Stack {
         String githubOwner = "durutheguru";
         String githubRepo = "cdk-patterns";
         String githubBranch = "main";
+
+
+        Role codeBuildRole = Role.Builder.create(this, "CodeBuild")
+            .assumedBy(new ServicePrincipal("codebuild.amazonaws.com"))
+            .build();
+
+        codeBuildRole.addToPolicy(
+            new PolicyStatement(
+                PolicyStatementProps.builder()
+                    .effect(Effect.ALLOW)
+                    .actions(
+                        Arrays.asList(
+                            "sts:AssumeRole",
+                            "iam:PassRole"
+                        )
+                    )
+                    .resources(
+                        Arrays.asList(
+                            "arn:aws:iam::*:role/cdk-readOnlyRole",
+                            "arn:aws:iam::*:role/cdk-hnb659fds-deploy-role-*",
+                            "arn:aws:iam::*:role/cdk-hnb659fds-file-publishing-*"
+                        )
+                    )
+                    .build()
+            )
+        );
+
+
 
         Bucket codePipelineBucket = new Bucket(this, ("code-pipeline-ebs-resource-bucket").toLowerCase(), BucketProps.builder()
             .bucketName("code-pipeline-bucket"+ System.currentTimeMillis())
@@ -75,6 +104,7 @@ public class CodePipelineStack extends Stack {
                                     .project(buildProject)
                                     .input(Artifact.artifact("EBS-SourceArtifact"))
                                     .outputs(Collections.singletonList(Artifact.artifact("EBS-BuildArtifact")))
+                                    .role(codeBuildRole)
                                     .build()
                             )
                         )
