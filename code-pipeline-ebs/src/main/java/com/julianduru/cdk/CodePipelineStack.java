@@ -39,7 +39,7 @@ public class CodePipelineStack extends Stack {
 
 
         Bucket codePipelineBucket = new Bucket(this, ("code-pipeline-ebs-resource-bucket").toLowerCase(), BucketProps.builder()
-            .bucketName("code-pipeline-bucket"+ System.currentTimeMillis())
+            .bucketName("code-pipeline-bucket-18938817843")
             .removalPolicy(RemovalPolicy.DESTROY)
             .autoDeleteObjects(true)
             .build());
