@@ -1,6 +1,7 @@
 package com.julianduru.cdk;
 
 import com.julianduru.cdk.stages.test.EbsStack;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -80,6 +81,7 @@ public class CodePipelineStack extends Stack {
             )
             .build()
         );
+        pipeline.getArtifactBucket().applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     }
 
