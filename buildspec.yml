@@ -12,8 +12,12 @@ phases:
 
   build:
     commands:
-      - echo Building the Java Maven application...
-      - cd service
+      - echo "Running Infrastructure Update..."
+      - npm install -g aws-cdk
+      - cd code-pipeline-ebs
+      - cdk deploy --all --verbose --require-approval never
+      - cd ../service
+      - echo "Building the Java Maven application..."
       - mvn clean package -DskipTests
 
 
