@@ -13,6 +13,8 @@ import software.amazon.awscdk.services.codepipeline.StageProps;
 import software.amazon.awscdk.services.codepipeline.actions.CodeBuildAction;
 import software.amazon.awscdk.services.codepipeline.actions.ElasticBeanstalkDeployAction;
 import software.amazon.awscdk.services.codepipeline.actions.GitHubSourceAction;
+import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.s3.BucketProps;
 import software.constructs.Construct;
 
 import java.util.Arrays;
@@ -34,6 +36,11 @@ public class CodePipelineStack extends Stack {
         String githubRepo = "cdk-patterns";
         String githubBranch = "main";
 
+        Bucket codePipelineBucket = new Bucket(this, ("code-pipeline-ebs-resource-bucket").toLowerCase(), BucketProps.builder()
+            .bucketName("code-pipeline-bucket"+ System.currentTimeMillis())
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true)
+            .build());
 
         Project buildProject = PipelineProject.Builder.create(this, "EBS-CodePipelineProject")
             .environment(BuildEnvironment.builder().buildImage(LinuxBuildImage.STANDARD_7_0).build())
@@ -79,9 +86,9 @@ public class CodePipelineStack extends Stack {
                         .build()
                 )
             )
+            .artifactBucket(codePipelineBucket)
             .build()
         );
-        pipeline.getArtifactBucket().applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     }
 
