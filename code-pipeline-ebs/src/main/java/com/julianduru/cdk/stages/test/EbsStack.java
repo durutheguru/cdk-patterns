@@ -107,7 +107,7 @@ public class EbsStack extends Stack {
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elasticbeanstalk:application:environment")
                 .optionName("RDS_PWD")
-                .value(databaseSecret.getSecretValue().unsafeUnwrap())
+                .value(databaseSecret.secretValueFromJson("password").unsafeUnwrap())
                 .build()
         );
 
