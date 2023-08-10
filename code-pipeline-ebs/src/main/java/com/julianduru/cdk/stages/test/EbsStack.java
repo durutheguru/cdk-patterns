@@ -1,5 +1,6 @@
 package com.julianduru.cdk.stages.test;
 
+import com.julianduru.cdk.util.JSONUtil;
 import org.jetbrains.annotations.Nullable;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.Stack;
@@ -8,12 +9,12 @@ import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.elasticbeanstalk.CfnApplication;
 import software.amazon.awscdk.services.elasticbeanstalk.CfnEnvironment;
 import software.amazon.awscdk.services.iam.*;
+import software.amazon.awscdk.services.rds.*;
+import software.amazon.awscdk.services.secretsmanager.Secret;
+import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
 import software.constructs.Construct;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +32,9 @@ public class EbsStack extends Stack {
     private Vpc vpc;
 
 
+    private Secret databaseSecret;
+
+
     public EbsStack(final Construct scope, final String id) {
         this(scope, id, null);
     }
@@ -45,9 +49,11 @@ public class EbsStack extends Stack {
 
         createVpc();
 
-        SecurityGroup securityGroup = createSecurityGroup(vpc);
+        SecurityGroup ec2SecurityGroup = createSecurityGroup(vpc);
 
         CfnInstanceProfile instanceProfile = createEc2InstanceProfile(appName);
+
+        DatabaseInstance database = createDatabase(vpc, ec2SecurityGroup);
 
         List<CfnEnvironment.OptionSettingProperty> applicationSettings = Arrays.asList(
             CfnEnvironment.OptionSettingProperty.builder()
@@ -65,7 +71,7 @@ public class EbsStack extends Stack {
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:autoscaling:launchconfiguration")
                 .optionName("SecurityGroups")
-                .value(securityGroup.getSecurityGroupId())
+                .value(ec2SecurityGroup.getSecurityGroupId())
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
@@ -78,6 +84,30 @@ public class EbsStack extends Stack {
                 .namespace("aws:ec2:vpc")
                 .optionName("Subnets")
                 .value(getSubnets(SubnetType.PUBLIC))
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_HOSTNAME")
+                .value(database.getDbInstanceEndpointAddress())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_PORT")
+                .value(database.getDbInstanceEndpointPort())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_USER")
+                .value("duru")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_PWD")
+                .value(databaseSecret.getSecretValue().unsafeUnwrap())
                 .build()
         );
 
@@ -201,6 +231,61 @@ public class EbsStack extends Stack {
     }
 
 
+    private DatabaseInstance createDatabase(final Vpc vpc, final SecurityGroup ec2SecurityGroup) {
+        Map<String, String> secretsMap = new HashMap<>();
+        secretsMap.put("username", "duru");
+
+        // Create RDS Database Secret
+        // Templated secret with username and password fields
+        this.databaseSecret = Secret.Builder.create(this, "TemplatedSecret")
+            .generateSecretString(
+                SecretStringGenerator.builder()
+                    .secretStringTemplate(JSONUtil.asJsonString(secretsMap, ""))
+                    .generateStringKey("password")
+                    .excludeCharacters("/@\"")
+                    .build()
+            )
+            .build();
+
+
+        // Create Security Group
+        SecurityGroup rdsSecurityGroup = SecurityGroup.Builder.create(this, "TestRDSSecurityGroup")
+            .vpc(vpc)
+            .build();
+        rdsSecurityGroup.addIngressRule(ec2SecurityGroup, Port.tcp(3306), "Allow EC2 access");
+        rdsSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), "Allow Public access");
+
+
+        // Create RDS Database Instance
+        DatabaseInstance database = DatabaseInstance.Builder.create(this, "Database")
+            .engine(
+                DatabaseInstanceEngine.mysql(
+                    MySqlInstanceEngineProps.builder()
+                        .version(MysqlEngineVersion.VER_8_0)
+                        .build()
+                )
+            )
+            .instanceIdentifier("my-rds-database")
+            .credentials(Credentials.fromSecret(databaseSecret))
+            .vpc(vpc)
+            .vpcSubnets(
+                SubnetSelection.builder()
+                    .subnetType(SubnetType.PRIVATE_ISOLATED)
+                    .build()
+            )
+            .securityGroups(Collections.singletonList(rdsSecurityGroup))
+            .build();
+
+
+        // Output RDS Endpoint
+        CfnOutput.Builder.create(this, "DatabaseEndpoint")
+            .value(database.getDbInstanceEndpointAddress())
+            .build();
+
+        return database;
+    }
+
+
     public CfnApplication getApplication() {
         return application;
     }
@@ -212,6 +297,5 @@ public class EbsStack extends Stack {
 
 
 }
-
 
 
