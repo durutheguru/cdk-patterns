@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 public class EbsStack extends Stack {
 
 
-    private final CfnApplication application;
+    private CfnApplication application;
 
 
-    private final CfnEnvironment environment;
+    private CfnEnvironment environment;
 
 
     private Vpc vpc;
@@ -45,80 +45,22 @@ public class EbsStack extends Stack {
 
         String appName = "test-ebs-application";
 
-        application = createApplication(appName);
-
         createVpc();
 
-        SecurityGroup ec2SecurityGroup = createSecurityGroup(vpc);
+        SecurityGroup elbSecurityGroup = createELBSecurityGroup(vpc);
+        SecurityGroup ec2SecurityGroup = createEC2SecurityGroup(vpc, elbSecurityGroup);
 
         CfnInstanceProfile instanceProfile = createEc2InstanceProfile(appName);
 
         DatabaseInstance database = createDatabase(vpc, ec2SecurityGroup);
 
-        List<CfnEnvironment.OptionSettingProperty> applicationSettings = Arrays.asList(
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("InstanceType")
-                .value("t2.micro")
-                .build(),
+        application = createApplication(appName);
 
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("IamInstanceProfile")
-                .value(instanceProfile.getInstanceProfileName())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("SecurityGroups")
-                .value(ec2SecurityGroup.getSecurityGroupId())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:ec2:vpc")
-                .optionName("VPCId")
-                .value(vpc.getVpcId())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:ec2:vpc")
-                .optionName("Subnets")
-                .value(getSubnets(SubnetType.PUBLIC))
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_HOSTNAME")
-                .value(database.getDbInstanceEndpointAddress())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_PORT")
-                .value(database.getDbInstanceEndpointPort())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_USER")
-                .value("duru")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_PWD")
-                .value(databaseSecret.secretValueFromJson("password").unsafeUnwrap())
-                .build()
+        List<CfnEnvironment.OptionSettingProperty> applicationSettings = buildApplicationSettings(
+            vpc, elbSecurityGroup, ec2SecurityGroup, instanceProfile, database
         );
 
-        environment = CfnEnvironment.Builder.create(this, "TestEBSEnvironment")
-            .applicationName(application.getApplicationName())
-            .environmentName("TestEBSEnvironment")
-            .solutionStackName("64bit Amazon Linux 2 v3.4.9 running Corretto 17")
-            .optionSettings(applicationSettings)
-            .build();
-
-        environment.addDependency(application);
+        environment = createEnvironment(application, applicationSettings);
     }
 
 
@@ -173,15 +115,118 @@ public class EbsStack extends Stack {
     }
 
 
-    private SecurityGroup createSecurityGroup(Vpc vpc) {
-        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
+    private SecurityGroup createELBSecurityGroup(Vpc vpc) {
+        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestELBSecurityGroup")
             .vpc(vpc)
-            .securityGroupName("EC2SecurityGroup")
+            .securityGroupName("ELBSecurityGroup")
             .build();
+
         sg.addIngressRule(Peer.anyIpv4(), Port.tcp(22), "Allow SSH access");
         sg.addIngressRule(Peer.anyIpv4(), Port.tcp(5000), "Allow Application access");
 
         return sg;
+    }
+
+
+    private SecurityGroup createEC2SecurityGroup(Vpc vpc, final SecurityGroup elbSecurityGroup) {
+        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
+            .vpc(vpc)
+            .securityGroupName("EC2SecurityGroup")
+            .build();
+
+        sg.addIngressRule(elbSecurityGroup, Port.tcp(22), "Allow SSH access");
+        sg.addIngressRule(elbSecurityGroup, Port.tcp(5000), "Allow Application access");
+
+        return sg;
+    }
+
+
+    private List<CfnEnvironment.OptionSettingProperty> buildApplicationSettings(
+        Vpc vpc,
+        SecurityGroup elbSecurityGroup,
+        SecurityGroup ec2SecurityGroup,
+        CfnInstanceProfile instanceProfile,
+        DatabaseInstance database
+    ) {
+        return Arrays.asList(
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:asg")
+                .optionName("MinSize")
+                .value("2")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:asg")
+                .optionName("MaxSize")
+                .value("6")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:launchconfiguration")
+                .optionName("InstanceType")
+                .value("t2.micro")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:launchconfiguration")
+                .optionName("IamInstanceProfile")
+                .value(instanceProfile.getInstanceProfileName())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:launchconfiguration")
+                .optionName("SecurityGroups")
+                .value(ec2SecurityGroup.getSecurityGroupId())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:ec2:vpc")
+                .optionName("VPCId")
+                .value(vpc.getVpcId())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:ec2:vpc")
+                .optionName("Subnets")
+                .value(getSubnets(SubnetType.PRIVATE_ISOLATED))
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:ec2:vpc")
+                .optionName("ELBSubnets")
+                .value(getSubnets(SubnetType.PUBLIC))
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elbv2:loadbalancer")
+                .optionName("SecurityGroups")
+                .value(elbSecurityGroup.getSecurityGroupId())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_HOSTNAME")
+                .value(database.getDbInstanceEndpointAddress())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_PORT")
+                .value(database.getDbInstanceEndpointPort())
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_USER")
+                .value("duru")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:application:environment")
+                .optionName("RDS_PWD")
+                .value(databaseSecret.secretValueFromJson("password").unsafeUnwrap())
+                .build()
+        );
     }
 
 
@@ -214,6 +259,23 @@ public class EbsStack extends Stack {
                     .build()
             )
             .build();
+    }
+
+
+    private CfnEnvironment createEnvironment(
+        CfnApplication application,
+        List<CfnEnvironment.OptionSettingProperty> applicationSettings
+    ) {
+        this.environment = CfnEnvironment.Builder.create(this, "TestEBSEnvironment")
+            .applicationName(application.getApplicationName())
+            .environmentName("TestEBSEnvironment")
+            .solutionStackName("64bit Amazon Linux 2 v3.4.9 running Corretto 17")
+            .optionSettings(applicationSettings)
+            .build();
+
+        environment.addDependency(application);
+
+        return environment;
     }
 
 
@@ -253,7 +315,7 @@ public class EbsStack extends Stack {
             .vpc(vpc)
             .build();
         rdsSecurityGroup.addIngressRule(ec2SecurityGroup, Port.tcp(3306), "Allow EC2 access");
-        rdsSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), "Allow Public access");
+//        rdsSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), "Allow Public access");
 
 
         // Create RDS Database Instance
@@ -297,5 +359,6 @@ public class EbsStack extends Stack {
 
 
 }
+
 
 
