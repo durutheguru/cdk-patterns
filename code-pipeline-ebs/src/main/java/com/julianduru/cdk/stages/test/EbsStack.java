@@ -47,8 +47,11 @@ public class EbsStack extends Stack {
 
         createVpc();
 
+        SecurityGroup vpcEndpointsSecurityGroup = createVPCEndpointsSecurityGroup(vpc);
+        createVPCEndpoints(vpc, vpcEndpointsSecurityGroup);
+
         SecurityGroup elbSecurityGroup = createELBSecurityGroup(vpc);
-        SecurityGroup ec2SecurityGroup = createEC2SecurityGroup(vpc, elbSecurityGroup);
+        SecurityGroup ec2SecurityGroup = createEC2SecurityGroup(vpc, elbSecurityGroup, vpcEndpointsSecurityGroup);
 
         CfnInstanceProfile instanceProfile = createEc2InstanceProfile(appName);
 
@@ -127,16 +130,66 @@ public class EbsStack extends Stack {
     }
 
 
-    private SecurityGroup createEC2SecurityGroup(Vpc vpc, final SecurityGroup elbSecurityGroup) {
+    private SecurityGroup createEC2SecurityGroup(Vpc vpc, final SecurityGroup elbSecurityGroup, final SecurityGroup vpcEndpointsSecurityGroup) {
         SecurityGroup sg = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
             .vpc(vpc)
             .securityGroupName("EC2SecurityGroup")
             .build();
 
-//        sg.addIngressRule(elbSecurityGroup, Port.tcp(22), "Allow SSH access");
         sg.addIngressRule(elbSecurityGroup, Port.tcp(5000), "Allow Application access");
 
+        sg.addIngressRule(vpcEndpointsSecurityGroup, Port.tcp(433), "Allow VPC Endpoints access");
+
         return sg;
+    }
+
+
+    private SecurityGroup createVPCEndpointsSecurityGroup(Vpc vpc) {
+        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestVPCEndpointsSecurityGroup")
+            .vpc(vpc)
+            .securityGroupName("VPCEndpointsSecurityGroup")
+            .build();
+
+        sg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), "Allow HTTPS Inbound traffic to VPC Endpoints");
+
+        return sg;
+    }
+
+
+    private void createVPCEndpoints(Vpc vpc, SecurityGroup vpcEndpointsSecurityGroup) {
+        createVPCEndpoint(
+            "VpcEndpointForSSM", vpc, vpcEndpointsSecurityGroup, InterfaceVpcEndpointAwsService.SSM
+        );
+        createVPCEndpoint(
+            "VpcEndpointForSSMMessages", vpc, vpcEndpointsSecurityGroup, InterfaceVpcEndpointAwsService.SSM_MESSAGES
+        );
+        createVPCEndpoint(
+            "VpcEndpointForEC2", vpc, vpcEndpointsSecurityGroup, InterfaceVpcEndpointAwsService.EC2
+        );
+        createVPCEndpoint(
+            "VpcEndpointForEC2Messages", vpc, vpcEndpointsSecurityGroup, InterfaceVpcEndpointAwsService.EC2_MESSAGES
+        );
+    }
+
+
+    private InterfaceVpcEndpoint createVPCEndpoint(
+        String id,
+        Vpc vpc,
+        SecurityGroup vpcEndpointSecurityGroup,
+        InterfaceVpcEndpointAwsService service
+    ) {
+        return InterfaceVpcEndpoint.Builder.create(this, id)
+            .vpc(vpc)
+            .service(service)
+            .securityGroups(Collections.singletonList(vpcEndpointSecurityGroup))
+//            .lookupSupportedAzs(true)
+            .subnets(
+                SubnetSelection.builder()
+                    .subnetType(SubnetType.PRIVATE_ISOLATED)
+                    .build()
+            )
+            .privateDnsEnabled(true)
+            .build();
     }
 
 
@@ -279,14 +332,15 @@ public class EbsStack extends Stack {
 
 
     private CfnInstanceProfile createEc2InstanceProfile(String appName) {
-        Role ec2Role = Role.Builder.create(this, appName + "-aws-elasticbeanstalk-ec2-role`")
-            .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
-            .build();
-        ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"));
-        ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
+//        Role ec2Role = Role.Builder.create(this, appName + "-aws-elasticbeanstalk-ec2-role`")
+//            .roleName(appName + "-aws-elasticbeanstalk-ec2-role")
+//            .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
+//            .build();
+//
+//        ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"));
 
         return CfnInstanceProfile.Builder.create(this, appName + "-InstanceProfile")
-            .roles(Collections.singletonList(ec2Role.getRoleName()))
+            .roles(Collections.singletonList("AWSSSMEC2DefaultRole"))
             .instanceProfileName(appName + "-InstanceProfile")
             .build();
     }
@@ -358,6 +412,4 @@ public class EbsStack extends Stack {
 
 
 }
-
-
 
