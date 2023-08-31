@@ -82,8 +82,14 @@ public class EbsStack extends Stack {
                         .build(),
 
                     SubnetConfiguration.builder()
-                        .name("Private")
+                        .name("PrivateIsolated")
                         .subnetType(SubnetType.PRIVATE_ISOLATED)
+                        .cidrMask(24)
+                        .build(),
+
+                    SubnetConfiguration.builder()
+                        .name("PrivateWithEgress")
+                        .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
                         .cidrMask(24)
                         .build()
                 )
@@ -412,5 +418,6 @@ public class EbsStack extends Stack {
 
 
 }
+
 
 
