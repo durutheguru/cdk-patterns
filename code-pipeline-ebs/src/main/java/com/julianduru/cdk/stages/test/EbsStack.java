@@ -240,7 +240,7 @@ public class EbsStack extends Stack {
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:ec2:vpc")
                 .optionName("Subnets")
-                .value(getSubnets(SubnetType.PRIVATE_ISOLATED))
+                .value(getSubnets(SubnetType.PRIVATE_WITH_EGRESS))
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
