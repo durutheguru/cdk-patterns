@@ -15,7 +15,16 @@ phases:
       - echo "Running Infrastructure Update..."
       - npm install -g aws-cdk
       - cd code-pipeline-ebs
-      - cdk deploy --all --verbose --require-approval never
+      - |
+        cdk deploy 
+        -c appName=CRUD-EC2 
+        -c account=058486276453 
+        -c region=us-east-1 
+        -c githubOwner=durutheguru 
+        -c githubRepo=cdk-patterns 
+        -c githubBranch=main 
+        -c db_username=duru 
+        --all --verbose --require-approval never
       - cd ../service
       - echo "Building the Java Maven application..."
       - mvn clean package -DskipTests
