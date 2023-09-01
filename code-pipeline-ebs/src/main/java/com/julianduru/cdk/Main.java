@@ -3,7 +3,6 @@ package com.julianduru.cdk;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.Environment;
 import software.amazon.awscdk.StackProps;
-import software.constructs.Node;
 
 import java.util.Arrays;
 import java.util.HashMap;
