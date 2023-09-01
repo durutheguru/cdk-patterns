@@ -256,6 +256,12 @@ public class EbsStack extends Stack {
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elb:loadbalancer")
+                .optionName("CrossZone")
+                .value("true")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elbv2:loadbalancer")
                 .optionName("SecurityGroups")
                 .value(elbSecurityGroup.getSecurityGroupId())
