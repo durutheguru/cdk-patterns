@@ -387,7 +387,9 @@ public class EbsStack extends Stack {
                 )
             )
             .instanceIdentifier("my-rds-database")
-            .credentials(Credentials.fromSecret(databaseSecret))
+            .credentials(
+                Credentials.fromSecret(databaseSecret, secretsMap.get("username"))
+            )
             .vpc(vpc)
             .vpcSubnets(
                 SubnetSelection.builder()
