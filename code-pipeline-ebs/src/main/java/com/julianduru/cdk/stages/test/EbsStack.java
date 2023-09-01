@@ -263,25 +263,25 @@ public class EbsStack extends Stack {
 
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_HOSTNAME")
-                .value(database.getDbInstanceEndpointAddress())
+                .optionName("SPRING_DATASOURCE_URL")
+                .value(
+                    String.format(
+                        "jdbc:mysql://%s:%s/push_notification_db?createDatabaseIfNotExist=true",
+                        database.getDbInstanceEndpointAddress(),
+                        database.getDbInstanceEndpointPort()
+                    )
+                )
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_PORT")
-                .value(database.getDbInstanceEndpointPort())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_USER")
+                .optionName("SPRING_DATASOURCE_USERNAME")
                 .value("duru")
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("RDS_PWD")
+                .optionName("SPRING_DATASOURCE_PASSWORD")
                 .value(databaseSecret.secretValueFromJson("password").unsafeUnwrap())
                 .build()
         );

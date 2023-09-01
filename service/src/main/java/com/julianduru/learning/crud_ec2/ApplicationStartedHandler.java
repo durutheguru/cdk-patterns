@@ -17,10 +17,10 @@ public class ApplicationStartedHandler {
     public void handleApplicationStarted() {
         log.info("Application Started");
 
-        log.info("RDS_HOSTNAME: {}", System.getenv("RDS_HOSTNAME"));
-        log.info("RDS_PORT: {}", System.getenv("RDS_PORT"));
-        log.info("RDS_USER: {}", System.getenv("RDS_USER"));
-        log.info("RDS_PWD: {}", System.getenv("RDS_PWD"));
+        log.info("SPRING_DATASOURCE_URL: {}", System.getenv("SPRING_DATASOURCE_URL"));
+        log.info("SPRING_DATASOURCE_USERNAME: {}", System.getenv("SPRING_DATASOURCE_USERNAME"));
+        log.info("SPRING_DATASOURCE_PASSWORD: {}", System.getenv("SPRING_DATASOURCE_PASSWORD"));
+//        log.info("RDS_PWD: {}", System.getenv("RDS_PWD"));
     }
 
 
