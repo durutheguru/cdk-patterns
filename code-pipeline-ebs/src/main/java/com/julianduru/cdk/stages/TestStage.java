@@ -21,7 +21,7 @@ public class TestStage extends Stage {
     public TestStage(@NotNull Construct scope, @NotNull String id, @Nullable StageProps props) {
         super(scope, id, props);
 
-        EbsStack ebsStack = new EbsStack(this, "ebsStackId");
+//        EbsStack ebsStack = new EbsStack(this, "ebsStackId");
 
 //        VpcStack vpcStack = new VpcStack(this, "vpcStackId");
 //        Ec2Stack ec2Stack = new Ec2Stack(this, "ec2StackId", vpcStack.getVpc());

@@ -24,10 +24,12 @@ public class UserDto {
       return username;
    }
 
+
    public UserDto setUsername(String username) {
       this.username = username;
       return this;
    }
+
 
    public String getFirstName() {
       return firstName;

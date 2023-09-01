@@ -1,5 +1,6 @@
 package com.julianduru.cdk.stages.test;
 
+import com.julianduru.cdk.Main;
 import com.julianduru.cdk.util.JSONUtil;
 import org.jetbrains.annotations.Nullable;
 import software.amazon.awscdk.CfnOutput;
@@ -25,51 +26,60 @@ public class EbsStack extends Stack {
 
     private CfnApplication application;
 
-
     private CfnEnvironment environment;
-
 
     private Vpc vpc;
 
+    private SecurityGroup vpcEndpointsSecurityGroup;
+
+    private SecurityGroup elbSecurityGroup;
+
+    private SecurityGroup ec2SecurityGroup;
+
+    private CfnInstanceProfile instanceProfile;
+
+    private DatabaseInstance database;
 
     private Secret databaseSecret;
 
-
-    public EbsStack(final Construct scope, final String id) {
-        this(scope, id, null);
-    }
+    private List<CfnEnvironment.OptionSettingProperty> applicationSettings;
 
 
-    public EbsStack(@Nullable Construct scope, @Nullable String id, @Nullable StackProps props) {
+
+    public EbsStack(
+        @Nullable Construct scope,
+        @Nullable String id,
+        @Nullable StackProps props,
+        final Map<String, String> variableMap
+    ) {
         super(scope, id, props);
 
-        String appName = "test-ebs-application";
+        initVpc();
 
-        createVpc();
+        createELBSecurityGroup();
 
-        SecurityGroup vpcEndpointsSecurityGroup = createVPCEndpointsSecurityGroup(vpc);
-        createVPCEndpoints(vpc, vpcEndpointsSecurityGroup);
+        createEC2Profile();
 
-        SecurityGroup elbSecurityGroup = createELBSecurityGroup(vpc);
-        SecurityGroup ec2SecurityGroup = createEC2SecurityGroup(vpc, elbSecurityGroup, vpcEndpointsSecurityGroup);
+        createDatabase(variableMap);
 
-        CfnInstanceProfile instanceProfile = createEc2InstanceProfile(appName);
+        createApplication(Main.getAppName());
 
-        DatabaseInstance database = createDatabase(vpc, ec2SecurityGroup);
+        createApplicationSettings();
 
-        application = createApplication(appName);
-
-        List<CfnEnvironment.OptionSettingProperty> applicationSettings = buildApplicationSettings(
-            vpc, elbSecurityGroup, ec2SecurityGroup, instanceProfile, database
-        );
-
-        environment = createEnvironment(application, applicationSettings);
+        createBeanstalkEnvironment();
     }
 
 
-    private Vpc createVpc() {
-        this.vpc = Vpc.Builder.create(this, "Test_Env_Vpc")
-            .vpcName("Test Env VPC")
+    private void initVpc() {
+        createVpc();
+        createVPCEndpointsSecurityGroup();
+        createVPCEndpoints();
+    }
+
+
+    private void createVpc() {
+        this.vpc = Vpc.Builder.create(this, Main.prefixApp("Test_Env_Vpc"))
+            .vpcName(Main.prefixApp("Test Env VPC"))
             .ipAddresses(IpAddresses.cidr("10.0.0.0/16"))
             .maxAzs(2)
             .natGateways(1)
@@ -97,72 +107,23 @@ public class EbsStack extends Stack {
             .build();
 
         // Output VPC ID
-        CfnOutput.Builder.create(this, "Test_Env_Vpc_Id")
-            .value(vpc.getVpcId())
+        CfnOutput.Builder.create(this, Main.prefixApp("Test_Env_Vpc_Id"))
+            .value(this.vpc.getVpcId())
             .build();
-
-        return vpc;
     }
 
 
-    private String getSubnets(SubnetType subnetType) {
-        List<ISubnet> subnets = new ArrayList<>();
-
-        switch (subnetType) {
-            case PUBLIC:
-                subnets = vpc.getPublicSubnets();
-                break;
-            case PRIVATE_ISOLATED:
-                subnets = vpc.getIsolatedSubnets();
-                break;
-            case PRIVATE_WITH_EGRESS:
-                subnets = vpc.getPrivateSubnets();
-        }
-
-        List<String> subnetIds = subnets.stream().map(ISubnet::getSubnetId).collect(Collectors.toList());
-        return String.join(",", subnetIds);
-    }
-
-
-    private SecurityGroup createELBSecurityGroup(Vpc vpc) {
-        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestELBSecurityGroup")
-            .vpc(vpc)
-            .securityGroupName("ELBSecurityGroup")
-            .build();
-
-        sg.addIngressRule(Peer.anyIpv4(), Port.tcp(5000), "Allow Application access");
-
-        return sg;
-    }
-
-
-    private SecurityGroup createEC2SecurityGroup(Vpc vpc, final SecurityGroup elbSecurityGroup, final SecurityGroup vpcEndpointsSecurityGroup) {
-        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestEc2SecurityGroup")
-            .vpc(vpc)
-            .securityGroupName("EC2SecurityGroup")
-            .build();
-
-        sg.addIngressRule(elbSecurityGroup, Port.tcp(5000), "Allow Application access");
-
-        sg.addIngressRule(vpcEndpointsSecurityGroup, Port.tcp(433), "Allow VPC Endpoints access");
-
-        return sg;
-    }
-
-
-    private SecurityGroup createVPCEndpointsSecurityGroup(Vpc vpc) {
-        SecurityGroup sg = SecurityGroup.Builder.create(this, "TestVPCEndpointsSecurityGroup")
+    private void createVPCEndpointsSecurityGroup() {
+        this.vpcEndpointsSecurityGroup = SecurityGroup.Builder.create(this, "TestVPCEndpointsSecurityGroup")
             .vpc(vpc)
             .securityGroupName("VPCEndpointsSecurityGroup")
             .build();
 
-        sg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), "Allow HTTPS Inbound traffic to VPC Endpoints");
-
-        return sg;
+        this.vpcEndpointsSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(443), "Allow HTTPS Inbound traffic to VPC Endpoints");
     }
 
 
-    private void createVPCEndpoints(Vpc vpc, SecurityGroup vpcEndpointsSecurityGroup) {
+    private void createVPCEndpoints() {
         createVPCEndpoint(
             "VpcEndpointForSSM", vpc, vpcEndpointsSecurityGroup, InterfaceVpcEndpointAwsService.SSM
         );
@@ -188,7 +149,6 @@ public class EbsStack extends Stack {
             .vpc(vpc)
             .service(service)
             .securityGroups(Collections.singletonList(vpcEndpointSecurityGroup))
-//            .lookupSupportedAzs(true)
             .subnets(
                 SubnetSelection.builder()
                     .subnetType(SubnetType.PRIVATE_ISOLATED)
@@ -199,14 +159,43 @@ public class EbsStack extends Stack {
     }
 
 
-    private List<CfnEnvironment.OptionSettingProperty> buildApplicationSettings(
-        Vpc vpc,
-        SecurityGroup elbSecurityGroup,
-        SecurityGroup ec2SecurityGroup,
-        CfnInstanceProfile instanceProfile,
-        DatabaseInstance database
-    ) {
-        return Arrays.asList(
+    private void createELBSecurityGroup() {
+        this.elbSecurityGroup = SecurityGroup.Builder.create(this, Main.prefixApp("TestELBSecurityGroup"))
+            .vpc(vpc)
+            .securityGroupName(Main.prefixApp("ELBSecurityGroup"))
+            .build();
+
+        this.elbSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(5000), "Allow Application access");
+    }
+
+
+    private void createEC2Profile() {
+        createEC2SecurityGroup();
+        createEC2InstanceProfile();
+    }
+
+
+    private void createEC2SecurityGroup() {
+        this.ec2SecurityGroup = SecurityGroup.Builder.create(this, Main.prefixApp("TestEc2SecurityGroup"))
+            .vpc(vpc)
+            .securityGroupName(Main.prefixApp("EC2SecurityGroup"))
+            .build();
+
+        this.ec2SecurityGroup.addIngressRule(elbSecurityGroup, Port.tcp(5000), "Allow Application access");
+        this.ec2SecurityGroup.addIngressRule(vpcEndpointsSecurityGroup, Port.tcp(433), "Allow VPC Endpoints access");
+    }
+
+
+    private void createEC2InstanceProfile() {
+        this.instanceProfile = CfnInstanceProfile.Builder.create(this, Main.prefixApp("InstanceProfile"))
+            .roles(Collections.singletonList("AWSSSMEC2DefaultRole"))
+            .instanceProfileName(Main.prefixApp("InstanceProfile"))
+            .build();
+    }
+
+
+    private void createApplicationSettings() {
+        this.applicationSettings = Arrays.asList(
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:autoscaling:asg")
                 .optionName("MinSize")
@@ -294,8 +283,27 @@ public class EbsStack extends Stack {
     }
 
 
-    private CfnApplication createApplication(String appName) {
-        Role serviceRole = Role.Builder.create(this, "EBSServiceRole")
+    private String getSubnets(SubnetType subnetType) {
+        List<ISubnet> subnets = new ArrayList<>();
+
+        switch (subnetType) {
+            case PUBLIC:
+                subnets = vpc.getPublicSubnets();
+                break;
+            case PRIVATE_ISOLATED:
+                subnets = vpc.getIsolatedSubnets();
+                break;
+            case PRIVATE_WITH_EGRESS:
+                subnets = vpc.getPrivateSubnets();
+        }
+
+        List<String> subnetIds = subnets.stream().map(ISubnet::getSubnetId).collect(Collectors.toList());
+        return String.join(",", subnetIds);
+    }
+
+
+    private void createApplication(String appName) {
+        Role serviceRole = Role.Builder.create(this, Main.prefixApp("EBSServiceRole"))
             .assumedBy(new ServicePrincipal("elasticbeanstalk.amazonaws.com"))
             .managedPolicies(
                 Collections.singletonList(
@@ -304,7 +312,7 @@ public class EbsStack extends Stack {
             )
             .build();
 
-        return CfnApplication.Builder.create(this, "TestEBSApplication")
+        this.application = CfnApplication.Builder.create(this, Main.prefixApp("TestEBSApplication"))
             .applicationName(appName)
             .resourceLifecycleConfig(
                 CfnApplication.ApplicationResourceLifecycleConfigProperty.builder()
@@ -326,45 +334,25 @@ public class EbsStack extends Stack {
     }
 
 
-    private CfnEnvironment createEnvironment(
-        CfnApplication application,
-        List<CfnEnvironment.OptionSettingProperty> applicationSettings
-    ) {
-        this.environment = CfnEnvironment.Builder.create(this, "TestEBSEnvironment")
+    private void createBeanstalkEnvironment() {
+        this.environment = CfnEnvironment.Builder.create(this, Main.prefixApp("TestEBSEnvironment"))
             .applicationName(application.getApplicationName())
-            .environmentName("TestEBSEnvironment")
+            .environmentName(Main.prefixApp("TestEBSEnvironment"))
             .solutionStackName("64bit Amazon Linux 2 v3.4.9 running Corretto 17")
             .optionSettings(applicationSettings)
             .build();
 
         environment.addDependency(application);
-
-        return environment;
     }
 
 
-    private CfnInstanceProfile createEc2InstanceProfile(String appName) {
-//        Role ec2Role = Role.Builder.create(this, appName + "-aws-elasticbeanstalk-ec2-role`")
-//            .roleName(appName + "-aws-elasticbeanstalk-ec2-role")
-//            .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
-//            .build();
-//
-//        ec2Role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AWSElasticBeanstalkWebTier"));
-
-        return CfnInstanceProfile.Builder.create(this, appName + "-InstanceProfile")
-            .roles(Collections.singletonList("AWSSSMEC2DefaultRole"))
-            .instanceProfileName(appName + "-InstanceProfile")
-            .build();
-    }
-
-
-    private DatabaseInstance createDatabase(final Vpc vpc, final SecurityGroup ec2SecurityGroup) {
+    private void createDatabase(Map<String, String> variableMap) {
         Map<String, String> secretsMap = new HashMap<>();
-        secretsMap.put("username", "duru");
+        secretsMap.put("username", variableMap.get("db_username"));
 
         // Create RDS Database Secret
         // Templated secret with username and password fields
-        this.databaseSecret = Secret.Builder.create(this, "TemplatedSecret")
+        this.databaseSecret = Secret.Builder.create(this, Main.prefixApp("TemplatedSecret"))
             .generateSecretString(
                 SecretStringGenerator.builder()
                     .secretStringTemplate(JSONUtil.asJsonString(secretsMap, ""))
@@ -376,7 +364,7 @@ public class EbsStack extends Stack {
 
 
         // Create Security Group
-        SecurityGroup rdsSecurityGroup = SecurityGroup.Builder.create(this, "TestRDSSecurityGroup")
+        SecurityGroup rdsSecurityGroup = SecurityGroup.Builder.create(this, Main.prefixApp("TestRDSSecurityGroup"))
             .vpc(vpc)
             .build();
         rdsSecurityGroup.addIngressRule(ec2SecurityGroup, Port.tcp(3306), "Allow EC2 access");
@@ -384,7 +372,7 @@ public class EbsStack extends Stack {
 
 
         // Create RDS Database Instance
-        DatabaseInstance database = DatabaseInstance.Builder.create(this, "Database")
+        this.database = DatabaseInstance.Builder.create(this, Main.prefixApp("Database"))
             .engine(
                 DatabaseInstanceEngine.mysql(
                     MySqlInstanceEngineProps.builder()
@@ -392,7 +380,7 @@ public class EbsStack extends Stack {
                         .build()
                 )
             )
-            .instanceIdentifier("my-rds-database")
+            .instanceIdentifier(Main.prefixApp("rds-database"))
             .credentials(
                 Credentials.fromSecret(databaseSecret, secretsMap.get("username"))
             )
@@ -407,11 +395,9 @@ public class EbsStack extends Stack {
 
 
         // Output RDS Endpoint
-        CfnOutput.Builder.create(this, "DatabaseEndpoint")
-            .value(database.getDbInstanceEndpointAddress())
+        CfnOutput.Builder.create(this, Main.prefixApp("DatabaseEndpoint"))
+            .value(this.database.getDbInstanceEndpointAddress())
             .build();
-
-        return database;
     }
 
 
