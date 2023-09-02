@@ -197,6 +197,18 @@ public class EbsStack extends Stack {
     private void createApplicationSettings() {
         this.applicationSettings = Arrays.asList(
             CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:updatepolicy:rollingupdate")
+                .optionName("RollingUpdateEnabled")
+                .value("true")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:autoscaling:updatepolicy:rollingupdate")
+                .optionName("RollingUpdateType")
+                .value("Health")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:autoscaling:asg")
                 .optionName("MinSize")
                 .value("2")
@@ -413,5 +425,6 @@ public class EbsStack extends Stack {
 
 
 }
+
 
 
