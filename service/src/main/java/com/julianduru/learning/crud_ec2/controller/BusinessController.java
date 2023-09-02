@@ -6,9 +6,9 @@ import com.julianduru.learning.crud_ec2.repo.BusinessRepository;
 import com.julianduru.learning.crud_ec2.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * created by Julian Dumebi Duru on 02/09/2023
@@ -25,6 +25,7 @@ public class BusinessController {
     private final BusinessRepository businessRepository;
 
 
+    @PostMapping
     public Business save(@Validated @RequestBody BusinessDto businessDto) {
         var user = userRepository.findByUsername(businessDto.getUsername())
             .orElseThrow(() -> new RuntimeException("User not found"));
@@ -37,4 +38,12 @@ public class BusinessController {
     }
 
 
+    @GetMapping
+    public List<Business> getBusinesses() {
+        return businessRepository.findAll();
+    }
+
+
 }
+
+
