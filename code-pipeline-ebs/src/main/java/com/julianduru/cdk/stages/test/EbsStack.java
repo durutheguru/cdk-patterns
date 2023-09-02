@@ -281,6 +281,30 @@ public class EbsStack extends Stack {
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elbv2:listener:443")
+                .optionName("ListenerEnabled")
+                .value("true")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elbv2:listener:443")
+                .optionName("SSLCertificateArns")
+                .value("arn:aws:iam::058486276453:server-certificate/crud-ec2-elastic-beanstalk-x509")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elbv2:listener:443")
+                .optionName("SSLPolicy")
+                .value("ELBSecurityPolicy-2016-08")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elbv2:listener:443")
+                .optionName("Protocol")
+                .value("HTTPS")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elasticbeanstalk:application:environment")
                 .optionName("SPRING_DATASOURCE_URL")
                 .value(
