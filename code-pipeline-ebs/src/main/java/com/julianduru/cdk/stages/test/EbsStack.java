@@ -197,6 +197,18 @@ public class EbsStack extends Stack {
     private void createApplicationSettings() {
         this.applicationSettings = Arrays.asList(
             CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:command")
+                .optionName("DeploymentPolicy")
+                .value("Rolling")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elasticbeanstalk:command")
+                .optionName("BatchSize")
+                .value("33")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:autoscaling:updatepolicy:rollingupdate")
                 .optionName("RollingUpdateEnabled")
                 .value("true")
