@@ -335,9 +335,10 @@ public class EbsStack extends Stack {
 
 
     private void createBeanstalkEnvironment() {
-        this.environment = CfnEnvironment.Builder.create(this, Main.prefixApp("TestEBSEnvironment"))
+        this.environment = CfnEnvironment.Builder
+            .create(this, Main.prefixApp("TestEBSEnvironment").toLowerCase())
             .applicationName(application.getApplicationName())
-            .environmentName(Main.prefixApp("TestEBSEnvironment"))
+            .environmentName(Main.prefixApp("TestEBSEnvironment").toLowerCase())
             .solutionStackName("64bit Amazon Linux 2 v3.4.9 running Corretto 17")
             .optionSettings(applicationSettings)
             .build();
@@ -412,4 +413,5 @@ public class EbsStack extends Stack {
 
 
 }
+
 
