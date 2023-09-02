@@ -4,12 +4,16 @@ import com.julianduru.learning.crud_ec2.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 /**
  * created by Julian Dumebi Duru on 16/07/2023
  */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
+
+    Optional<User> findByUsername(String username);
 
 
 }
