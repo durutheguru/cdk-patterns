@@ -28,7 +28,7 @@ public class BusinessController {
     @PostMapping
     public Business save(@Validated @RequestBody BusinessDto businessDto) {
         var user = userRepository.findByUsername(businessDto.getUsername())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new RuntimeException("User does not exist. Please fix this"));
 
         var business = new Business();
         business.setName(businessDto.getName());
