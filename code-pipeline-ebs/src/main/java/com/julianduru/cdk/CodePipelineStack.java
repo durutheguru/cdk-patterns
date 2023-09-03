@@ -34,11 +34,6 @@ public class CodePipelineStack extends Stack {
     public CodePipelineStack(final Construct scope, final String id, final StackProps props, final Map<String, String> variableMap) {
         super(scope, id, props);
 
-        // GitHub source repository information
-//        String githubOwner = "durutheguru";
-//        String githubRepo = "cdk-patterns";
-//        String githubBranch = "main";
-
         this.githubOwner = variableMap.get("githubOwner");
         this.githubRepo = variableMap.get("githubRepo");
         this.githubBranch = variableMap.get("githubBranch");
