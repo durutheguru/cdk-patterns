@@ -292,12 +292,6 @@ public class EbsStack extends Stack {
                 .value("arn:aws:iam::058486276453:server-certificate/crud-ec2-elasticbeanstalk-x509")
                 .build(),
 
-//            CfnEnvironment.OptionSettingProperty.builder()
-//                .namespace("aws:elb:listener:443")
-//                .optionName("PolicyNames")
-//                .value("ELBSecurityPolicy-2016-08")
-//                .build(),
-
             CfnEnvironment.OptionSettingProperty.builder()
                 .namespace("aws:elb:listener:443")
                 .optionName("ListenerProtocol")
@@ -473,6 +467,5 @@ public class EbsStack extends Stack {
 
 
 }
-
 
 
