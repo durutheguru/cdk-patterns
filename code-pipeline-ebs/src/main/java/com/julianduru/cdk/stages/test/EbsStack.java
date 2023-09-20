@@ -275,33 +275,45 @@ public class EbsStack extends Stack {
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elbv2:loadbalancer")
+                .namespace("aws:elb:loadbalancer")
                 .optionName("SecurityGroups")
                 .value(elbSecurityGroup.getSecurityGroupId())
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elbv2:listener:443")
+                .namespace("aws:elb:listener:443")
                 .optionName("ListenerEnabled")
                 .value("true")
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elbv2:listener:443")
-                .optionName("SSLCertificateArns")
-                .value("arn:aws:iam::058486276453:server-certificate/crud-ec2-elastic-beanstalk-x509")
+                .namespace("aws:elb:listener:443")
+                .optionName("SSLCertificateId")
+                .value("arn:aws:iam::058486276453:server-certificate/crud-ec2-elasticbeanstalk-x509")
                 .build(),
 
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elbv2:listener:443")
-                .optionName("SSLPolicy")
-                .value("ELBSecurityPolicy-2016-08")
-                .build(),
+//            CfnEnvironment.OptionSettingProperty.builder()
+//                .namespace("aws:elb:listener:443")
+//                .optionName("PolicyNames")
+//                .value("ELBSecurityPolicy-2016-08")
+//                .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elbv2:listener:443")
-                .optionName("Protocol")
+                .namespace("aws:elb:listener:443")
+                .optionName("ListenerProtocol")
                 .value("HTTPS")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elb:listener:443")
+                .optionName("InstancePort")
+                .value("5000")
+                .build(),
+
+            CfnEnvironment.OptionSettingProperty.builder()
+                .namespace("aws:elb:policies")
+                .optionName("LoadBalancerPorts")
+                .value(":all")
                 .build(),
 
             CfnEnvironment.OptionSettingProperty.builder()
@@ -461,5 +473,6 @@ public class EbsStack extends Stack {
 
 
 }
+
 
 
