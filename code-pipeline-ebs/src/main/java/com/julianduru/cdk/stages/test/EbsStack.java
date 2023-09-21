@@ -4,8 +4,11 @@ import com.julianduru.cdk.Main;
 import com.julianduru.cdk.util.JSONUtil;
 import org.jetbrains.annotations.Nullable;
 import software.amazon.awscdk.CfnOutput;
+import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
+import software.amazon.awscdk.services.cloudwatch.*;
+import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.elasticbeanstalk.CfnApplication;
 import software.amazon.awscdk.services.elasticbeanstalk.CfnEnvironment;
@@ -13,6 +16,9 @@ import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.rds.*;
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
+import software.amazon.awscdk.services.sns.Topic;
+import software.amazon.awscdk.services.sns.TopicProps;
+import software.amazon.awscdk.services.sns.subscriptions.EmailSubscription;
 import software.constructs.Construct;
 
 import java.util.*;
@@ -66,7 +72,9 @@ public class EbsStack extends Stack {
 
         createApplicationSettings();
 
-        createBeanstalkEnvironment();
+        String environmentName = createBeanstalkEnvironment();
+
+        createAlarms(environmentName);
     }
 
 
@@ -195,145 +203,57 @@ public class EbsStack extends Stack {
 
 
     private void createApplicationSettings() {
-        this.applicationSettings = Arrays.asList(
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:command")
-                .optionName("DeploymentPolicy")
-                .value("Rolling")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:command")
-                .optionName("BatchSize")
-                .value("33")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:updatepolicy:rollingupdate")
-                .optionName("RollingUpdateEnabled")
-                .value("true")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:updatepolicy:rollingupdate")
-                .optionName("RollingUpdateType")
-                .value("Health")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:asg")
-                .optionName("MinSize")
-                .value("2")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:asg")
-                .optionName("MaxSize")
-                .value("6")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("InstanceType")
-                .value("t2.micro")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("IamInstanceProfile")
-                .value(instanceProfile.getInstanceProfileName())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:autoscaling:launchconfiguration")
-                .optionName("SecurityGroups")
-                .value(ec2SecurityGroup.getSecurityGroupId())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:ec2:vpc")
-                .optionName("VPCId")
-                .value(vpc.getVpcId())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:ec2:vpc")
-                .optionName("Subnets")
-                .value(getSubnets(SubnetType.PRIVATE_WITH_EGRESS))
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:ec2:vpc")
-                .optionName("ELBSubnets")
-                .value(getSubnets(SubnetType.PUBLIC))
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:loadbalancer")
-                .optionName("CrossZone")
-                .value("true")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:loadbalancer")
-                .optionName("SecurityGroups")
-                .value(elbSecurityGroup.getSecurityGroupId())
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:listener:443")
-                .optionName("ListenerEnabled")
-                .value("true")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:listener:443")
-                .optionName("SSLCertificateId")
-                .value("arn:aws:iam::058486276453:server-certificate/crud-ec2-elasticbeanstalk-x509")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:listener:443")
-                .optionName("ListenerProtocol")
-                .value("HTTPS")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:listener:443")
-                .optionName("InstancePort")
-                .value("5000")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elb:policies")
-                .optionName("LoadBalancerPorts")
-                .value(":all")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("SPRING_DATASOURCE_URL")
-                .value(
-                    String.format(
-                        "jdbc:mysql://%s:%s/push_notification_db?createDatabaseIfNotExist=true",
-                        database.getDbInstanceEndpointAddress(),
-                        database.getDbInstanceEndpointPort()
-                    )
+        String[][] settingsArray = new String[][]{
+            {"aws:elasticbeanstalk:command", "DeploymentPolicy", "Rolling"},
+            {"aws:elasticbeanstalk:command", "BatchSize", "33"},
+            {"aws:autoscaling:updatepolicy:rollingupdate", "RollingUpdateEnabled", "true"},
+            {"aws:autoscaling:updatepolicy:rollingupdate", "RollingUpdateType", "Health"},
+            {"aws:autoscaling:asg", "MinSize", "2"},
+            {"aws:autoscaling:asg", "MaxSize", "6"},
+            {"aws:autoscaling:launchconfiguration", "InstanceType", "t2.micro"},
+            {"aws:autoscaling:launchconfiguration", "IamInstanceProfile", instanceProfile.getInstanceProfileName()},
+            {"aws:autoscaling:launchconfiguration", "SecurityGroups", ec2SecurityGroup.getSecurityGroupId()},
+            {"aws:ec2:vpc", "VPCId", vpc.getVpcId()},
+            {"aws:ec2:vpc", "Subnets", getSubnets(SubnetType.PRIVATE_WITH_EGRESS)},
+            {"aws:ec2:vpc", "ELBSubnets", getSubnets(SubnetType.PUBLIC)},
+            {"aws:elb:loadbalancer", "CrossZone", "true"},
+            {"aws:elb:loadbalancer", "SecurityGroups", elbSecurityGroup.getSecurityGroupId()},
+            {"aws:elb:listener:443", "ListenerEnabled", "true"},
+            {"aws:elb:listener:443", "SSLCertificateId", "arn:aws:iam::058486276453:server-certificate/crud-ec2-elasticbeanstalk-x509"},
+            {"aws:elb:listener:443", "ListenerProtocol", "HTTPS"},
+            {"aws:elb:listener:443", "InstancePort", "5000"},
+            {"aws:elb:policies", "LoadBalancerPorts", ":all"},
+            {
+                "aws:elasticbeanstalk:application:environment",
+                "SPRING_DATASOURCE_URL",
+                String.format(
+                    "jdbc:mysql://%s:%s/push_notification_db?createDatabaseIfNotExist=true",
+                    database.getDbInstanceEndpointAddress(),
+                    database.getDbInstanceEndpointPort()
                 )
-                .build(),
+            },
+            {
+                "aws:elasticbeanstalk:application:environment",
+                "SPRING_DATASOURCE_USERNAME",
+                "duru"
+            },
+            {
+                "aws:elasticbeanstalk:application:environment",
+                "SPRING_DATASOURCE_PASSWORD",
+                databaseSecret.secretValueFromJson("password").unsafeUnwrap()
+            }
+        };
 
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("SPRING_DATASOURCE_USERNAME")
-                .value("duru")
-                .build(),
-
-            CfnEnvironment.OptionSettingProperty.builder()
-                .namespace("aws:elasticbeanstalk:application:environment")
-                .optionName("SPRING_DATASOURCE_PASSWORD")
-                .value(databaseSecret.secretValueFromJson("password").unsafeUnwrap())
-                .build()
-        );
+        this.applicationSettings = new ArrayList<>();
+        for (String[] settings: settingsArray) {
+            this.applicationSettings.add(
+                CfnEnvironment.OptionSettingProperty.builder()
+                    .namespace(settings[0])
+                    .optionName(settings[1])
+                    .value(settings[2])
+                    .build()
+            );
+        }
     }
 
 
@@ -388,16 +308,20 @@ public class EbsStack extends Stack {
     }
 
 
-    private void createBeanstalkEnvironment() {
+    private String createBeanstalkEnvironment() {
+        String environmentName = Main.prefixApp("TestEBSEnvironment").toLowerCase();
+
         this.environment = CfnEnvironment.Builder
             .create(this, Main.prefixApp("TestEBSEnvironment").toLowerCase())
             .applicationName(application.getApplicationName())
-            .environmentName(Main.prefixApp("TestEBSEnvironment").toLowerCase())
+            .environmentName(environmentName)
             .solutionStackName("64bit Amazon Linux 2 v3.4.9 running Corretto 17")
             .optionSettings(applicationSettings)
             .build();
 
         environment.addDependency(application);
+
+        return environmentName;
     }
 
 
@@ -456,6 +380,38 @@ public class EbsStack extends Stack {
     }
 
 
+    private void createAlarms(String environmentName) {
+        // Create CloudWatch Alarm for CPU Utilization
+        Alarm alarm = Alarm.Builder.create(this, environmentName + "CpuHighAlarm")
+            .alarmDescription("Alarm when CPU exceeds 70%")
+            .threshold(70.0)
+            .evaluationPeriods(1)
+            .metric(
+                Metric.Builder.create()
+                    .namespace("AWS/EC2")
+                    .metricName("CPUUtilization")
+                    .statistic("Maximum")
+                    .period(Duration.minutes(1))
+                    .build()
+            )
+            .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
+            .actionsEnabled(true)
+            .build();
+
+        // Create an SNS Topic
+        Topic alarmTopic = new Topic(this, environmentName + "CPUAlarmTopic",
+            TopicProps.builder()
+            .displayName(environmentName + " CloudWatch Alarm Topic")
+            .build()
+        );
+
+        // Subscribe an email to the topic
+        alarmTopic.addSubscription(new EmailSubscription("durutheguru@gmail.com"));
+
+        alarm.addAlarmAction(new SnsAction(alarmTopic));
+    }
+
+
     public CfnApplication getApplication() {
         return application;
     }
@@ -467,5 +423,7 @@ public class EbsStack extends Stack {
 
 
 }
+
+
 
 
